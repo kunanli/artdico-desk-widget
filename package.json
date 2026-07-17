@@ -18,7 +18,8 @@
     "appId": "cc.artdico.deskwidget",
     "productName": "ARTDiCO Widget",
     "win": {
-      "target": ["nsis", "portable"]
+      "target": ["nsis", "portable"],
+      "icon": "build/icon.ico"
     },
     "nsis": {
       "oneClick": false,

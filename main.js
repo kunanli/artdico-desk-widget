@@ -42,6 +42,7 @@ function createWindow() {
     title: 'ARTDiCO 课表浮窗',
     backgroundColor: '#0A0A0A',
     frame: false,            // 无原生标题栏（挂件感）· 拖动/关闭由页面顶栏负责
+    icon: path.join(__dirname, 'icon.png'),   // 任务栏 / Alt-Tab 图标（橙色 A）
     alwaysOnTop: true,
     fullscreenable: false,
     maximizable: false,
@@ -71,10 +72,9 @@ function toggleWindow() {
 }
 
 function createTray() {
-  // 占位图标（1×1 透明 PNG）· 之后把品牌图标 base64 换进来
-  const icon = nativeImage.createFromDataURL(
-    'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=='
-  );
+  // 橙色 A 托盘图标（右下角系统托盘）
+  let icon = nativeImage.createFromPath(path.join(__dirname, 'tray.png'));
+  if (icon.isEmpty()) icon = nativeImage.createFromPath(path.join(__dirname, 'icon.png'));
   tray = new Tray(icon);
   tray.setToolTip('ARTDiCO 课表浮窗');
   tray.setContextMenu(Menu.buildFromTemplate([
