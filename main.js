@@ -3,9 +3,12 @@
 // 职责：一个置顶小窗口，载入 widget.html 的网址。UI/逻辑全在 widget.html。
 // 改动这个壳很少发生；日常迭代都在 artdico-deck/widget.html（走 OSS 部署）。
 // ============================================================
-const { app, BrowserWindow, Tray, Menu, shell, nativeImage } = require('electron');
+const { app, BrowserWindow, Tray, Menu, shell, nativeImage, ipcMain } = require('electron');
 const path = require('path');
 const fs = require('fs');
+
+// 桌面挂件：去掉「File Edit View…」菜单栏（整个 app 无菜单）
+Menu.setApplicationMenu(null);
 
 // 载入的网页地址 · 改这里即可切换（也可用环境变量 ARTDICO_WIDGET_URL 覆盖）
 const WIDGET_URL = process.env.ARTDICO_WIDGET_URL || 'https://portal.artdico.cc/widget.html';
@@ -35,12 +38,19 @@ function createWindow() {
     width:  b?.width  || 380,
     height: b?.height || 560,
     x: b?.x, y: b?.y,
-    minWidth: 320, minHeight: 420,
+    minWidth: 300, minHeight: 380,
     title: 'ARTDiCO 课表浮窗',
     backgroundColor: '#0A0A0A',
+    frame: false,            // 无原生标题栏（挂件感）· 拖动/关闭由页面顶栏负责
     alwaysOnTop: true,
     fullscreenable: false,
-    webPreferences: { contextIsolation: true, nodeIntegration: false }
+    maximizable: false,
+    skipTaskbar: false,      // 仍留任务栏入口（也可改 true 纯托盘常驻）
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.js'),
+      contextIsolation: true,
+      nodeIntegration: false
+    }
   });
   win.setAlwaysOnTop(true, 'floating');       // 浮在其它窗口之上
   win.setVisibleOnAllWorkspaces(true);
@@ -76,6 +86,11 @@ function createTray() {
   ]));
   tray.on('click', toggleWindow);
 }
+
+// 窗口控制（页面顶栏的 – / ✕ 通过 preload → IPC 调这里）
+ipcMain.on('widget:minimize', () => { if (win) win.minimize(); });
+ipcMain.on('widget:hide',     () => { if (win) win.hide(); });   // ✕ = 收起到托盘（托盘点回来）
+ipcMain.on('widget:quit',     () => { app.isQuitting = true; app.quit(); });
 
 app.whenReady().then(() => { createWindow(); createTray(); });
 
