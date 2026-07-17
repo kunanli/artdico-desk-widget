@@ -6,7 +6,7 @@
   "main": "main.js",
   "scripts": {
     "start": "electron .",
-    "build": "electron-builder --win"
+    "build": "electron-builder --win --publish never"
   },
   "author": "ARTDiCO",
   "license": "UNLICENSED",
@@ -17,7 +17,6 @@
   "build": {
     "appId": "cc.artdico.deskwidget",
     "productName": "ARTDiCO Widget",
-    "artifactName": "ARTDiCO-Widget-Setup-${version}.${ext}",
     "win": {
       "target": ["nsis", "portable"]
     },
@@ -26,7 +25,11 @@
       "perMachine": false,
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
-      "shortcutName": "ARTDiCO 课表浮窗"
+      "shortcutName": "ARTDiCO 课表浮窗",
+      "artifactName": "ARTDiCO-Widget-Setup-${version}.${ext}"
+    },
+    "portable": {
+      "artifactName": "ARTDiCO-Widget-Portable-${version}.${ext}"
     }
   }
 }
