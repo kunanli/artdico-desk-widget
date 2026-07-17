@@ -4,6 +4,7 @@
 // 改动这个壳很少发生；日常迭代都在 artdico-deck/widget.html（走 OSS 部署）。
 // ============================================================
 const { app, BrowserWindow, Tray, Menu, shell, nativeImage, ipcMain, Notification } = require('electron');
+const { autoUpdater } = require('electron-updater');
 const path = require('path');
 const fs = require('fs');
 
@@ -134,7 +135,28 @@ ipcMain.on('widget:notify', (e, data) => {
   n.show();
 });
 
-app.whenReady().then(() => { createWindow(); createTray(); });
+// 自动更新（generic 源 · deck.artdico.cc/desk-widget/ · 国内 CDN 免 token）
+function setupAutoUpdate() {
+  if (!app.isPackaged) return;   // 开发态跳过（无更新源会报错）
+  autoUpdater.autoDownload = true;
+  autoUpdater.autoInstallOnAppQuit = true;   // 后台下好 · 下次退出静默安装
+  autoUpdater.on('error', (err) => console.warn('[updater]', err && err.message));
+  autoUpdater.on('update-downloaded', (info) => {
+    if (Notification.isSupported()) {
+      const n = new Notification({
+        title: 'ARTDiCO 挂件有新版本',
+        body: `v${info && info.version || ''} 已下载 · 退出后自动更新`,
+        icon: path.join(__dirname, 'icon.png')
+      });
+      n.show();
+    }
+  });
+  const check = () => { autoUpdater.checkForUpdates().catch(() => {}); };
+  check();                                   // 启动检查一次
+  setInterval(check, 6 * 60 * 60 * 1000);    // 之后每 6 小时
+}
+
+app.whenReady().then(() => { createWindow(); createTray(); setupAutoUpdate(); });
 
 // 关掉窗口不退出（常驻托盘）· 从托盘再打开
 app.on('window-all-closed', (e) => { /* keep alive in tray */ });

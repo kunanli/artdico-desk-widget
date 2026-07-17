@@ -34,9 +34,35 @@ jobs:
           path: dist/*.exe
           if-no-files-found: error
 
-      - name: 发布 Release（仅打 tag 时）
+      - name: 发布 Release（仅打 tag 时 · 供你下载分发）
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
-          files: dist/*.exe
+          files: |
+            dist/*.exe
+            dist/latest.yml
+            dist/*.blockmap
           generate_release_notes: true
+
+      # ── 自动更新源：把 latest.yml + 安装档 + blockmap 发到阿里云 OSS ──
+      # electron-updater(generic) 客户端从 deck.artdico.cc/desk-widget/latest.yml 检查更新
+      # 需在本仓库 Settings→Secrets 配 4 个阿里云 secret（同 artdico-deck 的值）
+      - name: 配置 ossutil（仅 tag）
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: manyuanrong/setup-ossutil@v3.0
+        with:
+          endpoint: ${{ secrets.ALIYUN_OSS_ENDPOINT }}
+          access-key-id: ${{ secrets.ALIYUN_ACCESS_KEY_ID }}
+          access-key-secret: ${{ secrets.ALIYUN_ACCESS_KEY_SECRET }}
+
+      - name: 上传更新包到 OSS（deck.artdico.cc/desk-widget/）
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: bash
+        run: |
+          B="oss://${{ secrets.ALIYUN_OSS_BUCKET }}/desk-widget/"
+          # latest.yml 必须不缓存（否则客户端查不到新版本）
+          ossutil cp -f dist/latest.yml "${B}latest.yml" --meta Cache-Control:no-cache
+          for f in dist/*.exe dist/*.blockmap; do
+            [ -e "$f" ] && ossutil cp -f "$f" "$B"
+          done
+          echo "✅ 更新源已发布到 ${B}"
