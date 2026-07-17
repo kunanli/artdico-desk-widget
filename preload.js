@@ -9,5 +9,6 @@ const { contextBridge, ipcRenderer } = require('electron');
 contextBridge.exposeInMainWorld('electronWidget', {
   minimize: () => ipcRenderer.send('widget:minimize'),
   close:    () => ipcRenderer.send('widget:hide'),   // 收起到托盘
-  quit:     () => ipcRenderer.send('widget:quit')
+  quit:     () => ipcRenderer.send('widget:quit'),
+  notify:   (title, body) => ipcRenderer.send('widget:notify', { title, body })
 });

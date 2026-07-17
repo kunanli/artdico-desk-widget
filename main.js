@@ -3,7 +3,7 @@
 // 职责：一个置顶小窗口，载入 widget.html 的网址。UI/逻辑全在 widget.html。
 // 改动这个壳很少发生；日常迭代都在 artdico-deck/widget.html（走 OSS 部署）。
 // ============================================================
-const { app, BrowserWindow, Tray, Menu, shell, nativeImage, ipcMain } = require('electron');
+const { app, BrowserWindow, Tray, Menu, shell, nativeImage, ipcMain, Notification } = require('electron');
 const path = require('path');
 const fs = require('fs');
 
@@ -12,6 +12,9 @@ Menu.setApplicationMenu(null);
 
 // 载入的网页地址 · 改这里即可切换（也可用环境变量 ARTDICO_WIDGET_URL 覆盖）
 const WIDGET_URL = process.env.ARTDICO_WIDGET_URL || 'https://portal.artdico.cc/widget.html';
+// 安全加固：窗口只允许停留在这个源（页面被诱导跳转也去不了别处）
+let ALLOWED_ORIGIN = 'https://portal.artdico.cc';
+try { ALLOWED_ORIGIN = new URL(WIDGET_URL).origin; } catch (e) {}
 
 let win = null;
 let tray = null;
@@ -60,6 +63,18 @@ function createWindow() {
   // 页面里的外链（如帮助文档）用系统浏览器打开，不在浮窗里跳走
   win.webContents.setWindowOpenHandler(({ url }) => { shell.openExternal(url); return { action: 'deny' }; });
 
+  // 安全加固：锁死导航目标 · 只允许 ALLOWED_ORIGIN · 其余一律拦下（外链交系统浏览器）
+  const guardNav = (e, url) => {
+    let origin = '';
+    try { origin = new URL(url).origin; } catch (_) {}
+    if (origin !== ALLOWED_ORIGIN) {
+      e.preventDefault();
+      if (/^https?:/.test(url)) shell.openExternal(url);
+    }
+  };
+  win.webContents.on('will-navigate', guardNav);
+  win.webContents.on('will-redirect', guardNav);
+
   win.on('close', saveBounds);
   win.on('moved', saveBounds);
   win.on('resized', saveBounds);
@@ -91,6 +106,19 @@ function createTray() {
 ipcMain.on('widget:minimize', () => { if (win) win.minimize(); });
 ipcMain.on('widget:hide',     () => { if (win) win.hide(); });   // ✕ = 收起到托盘（托盘点回来）
 ipcMain.on('widget:quit',     () => { app.isQuitting = true; app.quit(); });
+
+// 课前系统通知（页面算好时机 → 这里用原生通知弹出 · 带橙 A 图标）
+ipcMain.on('widget:notify', (e, data) => {
+  if (!Notification.isSupported()) return;
+  const n = new Notification({
+    title: (data && data.title) || 'ARTDiCO',
+    body:  (data && data.body) || '',
+    icon:  path.join(__dirname, 'icon.png'),
+    silent: false
+  });
+  n.on('click', () => { if (win) { win.show(); win.focus(); } });
+  n.show();
+});
 
 app.whenReady().then(() => { createWindow(); createTray(); });
 
