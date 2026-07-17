@@ -10,5 +10,6 @@ contextBridge.exposeInMainWorld('electronWidget', {
   minimize: () => ipcRenderer.send('widget:minimize'),
   close:    () => ipcRenderer.send('widget:hide'),   // 收起到托盘
   quit:     () => ipcRenderer.send('widget:quit'),
-  notify:   (title, body) => ipcRenderer.send('widget:notify', { title, body })
+  notify:   (title, body) => ipcRenderer.send('widget:notify', { title, body }),
+  setMini:  (on) => ipcRenderer.send('widget:mini', !!on)   // 迷你模式：收缩/恢复窗口
 });

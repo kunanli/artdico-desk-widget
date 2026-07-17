@@ -107,6 +107,20 @@ ipcMain.on('widget:minimize', () => { if (win) win.minimize(); });
 ipcMain.on('widget:hide',     () => { if (win) win.hide(); });   // ✕ = 收起到托盘（托盘点回来）
 ipcMain.on('widget:quit',     () => { app.isQuitting = true; app.quit(); });
 
+// 迷你模式：收缩到一条（只显示下一堂）/ 恢复原大小
+let _normalBounds = null;
+ipcMain.on('widget:mini', (e, on) => {
+  if (!win) return;
+  if (on) {
+    _normalBounds = win.getBounds();
+    win.setMinimumSize(260, 68);
+    win.setBounds({ x: _normalBounds.x, y: _normalBounds.y, width: _normalBounds.width, height: 96 });
+  } else {
+    win.setMinimumSize(300, 380);
+    if (_normalBounds) win.setBounds(_normalBounds);
+  }
+});
+
 // 课前系统通知（页面算好时机 → 这里用原生通知弹出 · 带橙 A 图标）
 ipcMain.on('widget:notify', (e, data) => {
   if (!Notification.isSupported()) return;
