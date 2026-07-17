@@ -1,0 +1,32 @@
+{
+  "name": "artdico-desk-widget",
+  "version": "0.1.0",
+  "private": true,
+  "description": "ARTDiCO 导师课表桌面浮窗 · Electron 薄壳（置顶小窗载入 widget.html）",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder --win"
+  },
+  "author": "ARTDiCO",
+  "license": "UNLICENSED",
+  "devDependencies": {
+    "electron": "^31.7.7",
+    "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "appId": "cc.artdico.deskwidget",
+    "productName": "ARTDiCO Widget",
+    "artifactName": "ARTDiCO-Widget-Setup-${version}.${ext}",
+    "win": {
+      "target": ["nsis", "portable"]
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "shortcutName": "ARTDiCO 课表浮窗"
+    }
+  }
+}
