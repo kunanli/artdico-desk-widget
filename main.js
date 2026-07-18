@@ -19,7 +19,10 @@ try { ALLOWED_ORIGIN = new URL(WIDGET_URL).origin; } catch (e) {}
 
 let win = null;
 let tray = null;
-const boundsFile = path.join(app.getPath('userData'), 'window-bounds.json');
+let _isMini = false;
+const MINI_H = 96;
+const boundsFile = path.join(app.getPath('userData'), 'window-bounds.json');  // 正常（展开）尺寸
+const prefFile   = path.join(app.getPath('userData'), 'widget-pref.json');     // { mini, x, y } 上次状态
 
 // 单例锁：重复启动只聚焦已有窗口
 if (!app.requestSingleInstanceLock()) {
@@ -28,21 +31,29 @@ if (!app.requestSingleInstanceLock()) {
   app.on('second-instance', () => { if (win) { win.show(); win.focus(); } });
 }
 
-function loadBounds() {
-  try { return JSON.parse(fs.readFileSync(boundsFile, 'utf8')); } catch (e) { return null; }
+function _loadJSON(f) { try { return JSON.parse(fs.readFileSync(f, 'utf8')); } catch (e) { return null; } }
+function loadBounds() { return _loadJSON(boundsFile); }
+function loadPref() { return _loadJSON(prefFile) || {}; }
+function savePref() {
+  try { const b = win ? win.getBounds() : {}; fs.writeFileSync(prefFile, JSON.stringify({ mini: _isMini, x: b.x, y: b.y })); } catch (e) {}
 }
 function saveBounds() {
   if (!win) return;
-  try { fs.writeFileSync(boundsFile, JSON.stringify(win.getBounds())); } catch (e) {}
+  // 迷你时只记位置（不覆盖展开尺寸）· 展开时记完整尺寸
+  if (!_isMini) { try { fs.writeFileSync(boundsFile, JSON.stringify(win.getBounds())); } catch (e) {} }
+  savePref();
 }
 
 function createWindow() {
-  const b = loadBounds();
+  const nb = loadBounds() || {};
+  const pref = loadPref();
+  _isMini = pref.mini === true;   // 跟随上次状态（页面 localStorage 为准 · 载入后会再同步）
   win = new BrowserWindow({
-    width:  b?.width  || 380,
-    height: b?.height || 560,
-    x: b?.x, y: b?.y,
-    minWidth: 300, minHeight: 380,
+    width:  nb.width || 380,
+    height: _isMini ? MINI_H : (nb.height || 560),
+    x: (pref.x != null ? pref.x : nb.x),
+    y: (pref.y != null ? pref.y : nb.y),
+    minWidth: 300, minHeight: _isMini ? 68 : 380,
     title: 'ARTDiCO 课表浮窗',
     backgroundColor: '#0A0A0A',
     frame: false,            // 无原生标题栏（挂件感）· 拖动/关闭由页面顶栏负责
@@ -108,18 +119,23 @@ ipcMain.on('widget:minimize', () => { if (win) win.minimize(); });
 ipcMain.on('widget:hide',     () => { if (win) win.hide(); });   // ✕ = 收起到托盘（托盘点回来）
 ipcMain.on('widget:quit',     () => { app.isQuitting = true; app.quit(); });
 
-// 迷你模式：收缩到一条（只显示下一堂）/ 恢复原大小
-let _normalBounds = null;
+// 迷你模式：收缩到一条（只显示下一堂）/ 恢复展开尺寸
 ipcMain.on('widget:mini', (e, on) => {
   if (!win) return;
   if (on) {
-    _normalBounds = win.getBounds();
+    if (!_isMini) { try { fs.writeFileSync(boundsFile, JSON.stringify(win.getBounds())); } catch (e) {} }  // 先记住展开尺寸
+    _isMini = true;
+    const b = win.getBounds();
     win.setMinimumSize(260, 68);
-    win.setBounds({ x: _normalBounds.x, y: _normalBounds.y, width: _normalBounds.width, height: 96 });
+    win.setBounds({ x: b.x, y: b.y, width: b.width, height: MINI_H });
   } else {
+    _isMini = false;
     win.setMinimumSize(300, 380);
-    if (_normalBounds) win.setBounds(_normalBounds);
+    const nb = loadBounds() || {};
+    const b = win.getBounds();
+    win.setBounds({ x: b.x, y: b.y, width: nb.width || Math.max(b.width, 360), height: nb.height || 560 });
   }
+  savePref();
 });
 
 // 课前系统通知（页面算好时机 → 这里用原生通知弹出 · 带橙 A 图标）
