@@ -20,7 +20,7 @@ try { ALLOWED_ORIGIN = new URL(WIDGET_URL).origin; } catch (e) {}
 let win = null;
 let tray = null;
 let _isMini = false;
-const MINI_H = 96;
+const MINI_H = 110;   // 迷你窗口高度（比原 96 高约 15%）
 const boundsFile = path.join(app.getPath('userData'), 'window-bounds.json');  // 正常（展开）尺寸
 const prefFile   = path.join(app.getPath('userData'), 'widget-pref.json');     // { mini, x, y } 上次状态
 
